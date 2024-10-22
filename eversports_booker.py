@@ -21,6 +21,8 @@ from credentials import USERNAME
 from credentials import PASSWORD
 
 from config_reader import BookingConfig
+import argparse
+import os
 
 import selenium_util
 import time
@@ -166,8 +168,8 @@ def bookSpot(driver, weekday, time_slot, workout_type):
                 break
 
 
-def booking_desired(current_weekday_name):
-    config = BookingConfig("./to_book.yaml")
+def booking_desired(current_weekday_name, config_file):
+    config = BookingConfig(config_file)
     workoutSlot = config.get_booking_of_weekday(current_weekday_name)
 
     desiredTime = None
@@ -183,19 +185,39 @@ def booking_desired(current_weekday_name):
     return desiredTime, desiredType
 
 
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Eversport booker for automating your eversports bookings')
+    parser.add_argument('-c', '--config', type=str, required=True, help='Path to YAML config file. The config file lists the days, hours and types of workouts you want to book.')
+    parser.add_argument('-d', '--debug', action='store_true', help='Enable debug mode')
+    parser.add_argument('-hl', '--headless', action='store_true', help='Enable headless mode')
+    parser.add_argument('-rp', '--raspi-mode', action='store_true', help='Enable raspi mode')
+
+    args = parser.parse_args()
+
+    config_path = args.config
+    debug_mode = args.debug
+    headless_mode = args.headless
+    raspi_mode = args.raspi_mode
+
+    if not os.path.isfile(config_path):
+        raise argparse.ArgumentTypeError(f'{config_path} does not exist or is not a file')
+    
+    return config_path, debug_mode, headless_mode, raspi_mode
+
+
 def main():
+    config_path, debug_mode, headless_mode, raspi_mode = parse_arguments()
+
     current_weekday_name = datetime.datetime.now().strftime("%A")
-    desiredTime, desiredType = booking_desired(current_weekday_name)
+    desiredTime, desiredType = booking_desired(current_weekday_name, config_path)
 
     if desiredType is None or desiredTime is None:
         return 0
 
     global g_courses
-    headless_mode = False
-    raspi_setup = False
 
     if headless_mode:
-        if raspi_setup:
+        if raspi_mode:
             service = Service(executable_path='/usr/lib/chromium-browser/chromedriver')
         else:
             service = Service(executable_path=ChromeDriverManager().install())
