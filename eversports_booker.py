@@ -60,7 +60,7 @@ def accept_cookies(driver) -> None:
     selenium_util.pressButton(driver, xpath_accept)
 
 
-def login(driver):
+def login(driver, username, password):
     wait = WebDriverWait(driver, 10)
     time.sleep(1)
 
@@ -77,8 +77,8 @@ def login(driver):
 
 
     # Enter the credentials and submit the form
-    username_field.send_keys(USERNAME)
-    password_field.send_keys(PASSWORD)
+    username_field.send_keys(username)
+    password_field.send_keys(password)
 
     login_button_hover_xp = '/html/body/div/div/div/form/div/div/div/div[3]/button[1]'
     login_button_hover = driver.find_element(By.XPATH, login_button_hover_xp)
@@ -191,6 +191,8 @@ def parse_arguments():
     parser.add_argument('-d', '--debug', action='store_true', help='Enable debug mode')
     parser.add_argument('-hl', '--headless', action='store_true', help='Enable headless mode')
     parser.add_argument('-rp', '--raspi-mode', action='store_true', help='Enable raspi mode')
+    parser.add_argument('-u', '--username', type=str, help='Username, usually the email used for registering at eversports')
+    parser.add_argument('-pw', '--password', type=str, help='Password')
 
     args = parser.parse_args()
 
@@ -199,14 +201,24 @@ def parse_arguments():
     headless_mode = args.headless
     raspi_mode = args.raspi_mode
 
+    if (args.username and not args.password) or (args.password and not args.username):
+            print("Error: Both --username and --password must be provided together.")
+            sys.exit(1)
+    elif args.password is None:
+        password = PASSWORD
+        username = USERNAME
+    else:
+        password = args.password
+        username = args.username
+
     if not os.path.isfile(config_path):
         raise argparse.ArgumentTypeError(f'{config_path} does not exist or is not a file')
-    
-    return config_path, debug_mode, headless_mode, raspi_mode
+
+    return config_path, debug_mode, headless_mode, raspi_mode, password, username
 
 
 def main():
-    config_path, debug_mode, headless_mode, raspi_mode = parse_arguments()
+    config_path, debug_mode, headless_mode, raspi_mode, password, username = parse_arguments()
 
     current_weekday_name = datetime.datetime.now().strftime("%A")
     desiredTime, desiredType = booking_desired(current_weekday_name, config_path)
@@ -241,7 +253,7 @@ def main():
     if(is_valid_url(URL)):
         logger.debug("URL is valid!")
         open_page_accept_cookies(driver, URL)
-        login(driver)
+        login(driver, username, password)
         time.sleep(2)
         next_week(driver)
         next_week(driver)
